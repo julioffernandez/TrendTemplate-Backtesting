@@ -39,14 +39,17 @@ El sistema incorpora gestión de riesgo asimétrica, protección ante anuncios d
    ```bash
    git clone [https://github.com/tu-usuario/minervini-backtest.git](https://github.com/tu-usuario/minervini-backtest.git)
    cd minervini-backtest
+   ```
 
-2. Insalar dependencias:
+2. Instalar dependencias:
+```
 python -m pip install pandas numpy yfinance matplotlib
-Mediante VS Code tenener las extensiones de Jupyter y Python instaladas
+´´´
+Mediante VS Code tener las extensiones de Jupyter y Python instaladas
 
 3. Ejecutar el Jupyter Notebook en bloques de forma secuencial
 
-Nota sobre el Comportamiento del Sistema: La fortaleza del algoritmo reside en la asimetría de capital: neutraliza prácticamente los mercados bajistas severos (ej. 2022). En periodos de rebote vertical con megacaps concentradas o rangos laterales de alta volatilidad (ej. 2023-2025), la estrategia asume un coste de oportunidad (cash drag y saltos de stop en falsos breakouts) a cambio de mantener un perfil de drawdown protegido por debajo del 12%.
+Nota sobre el Comportamiento del Sistema: La fortaleza del algoritmo reside en la asimetría de capital: neutraliza prácticamente los mercados bajistas severos (ej. 2022). En periodos de rebote vertical con megacaps concentradas o rangos laterales de alta volatilidad (ej. 2023-2025), la estrategia asume un coste de oportunidad (cash drag y saltos de stop en falsos breakouts) a cambio de mantener un perfil de drawdown contenido por debajo del 14-17% (frente al -35.1% del QQQ).
 
 
 # Guía de Uso
@@ -54,37 +57,41 @@ Nota sobre el Comportamiento del Sistema: La fortaleza del algoritmo reside en l
 Ejecución básica desde Python o dentro de backtest_minervini.ipynb:
 
 import pandas as pd
+import yfinance as yf
 from datos_filtrado import get_historical_data, get_earnings_calendar, calculate_trend_template
 from motor import MinerviniBacktest
 from evaluacion import calculate_metrics
-import yfinance as yf
 
-## 1. Definir universo y fechas
+# 1. Definir universo y ventana temporal (5 años + calentamiento de 252 barras)
 TICKERS = ["AAPL", "MSFT", "NVDA", "AMZN", "META", "GOOGL", "AVGO", "COST"]
 start_date = "2020-04-30"
 end_date = "2026-06-30"
 
-## 2. Descarga y cálculo de indicadores
+# 2. Descarga y cálculo de indicadores
 raw_data, _ = get_historical_data(TICKERS, start_date=start_date, end_date=end_date)
 benchmark = yf.download("QQQ", start=start_date, end=end_date, progress=False, auto_adjust=True)
 if isinstance(benchmark.columns, pd.MultiIndex):
     benchmark.columns = benchmark.columns.get_level_values(0)
 
+if "SMA_200" not in benchmark.columns:
+    benchmark["SMA_200"] = benchmark["Close"].rolling(window=200).mean()
+
 earnings_cal, _ = get_earnings_calendar(list(raw_data.keys()))
 data_processed = calculate_trend_template(raw_data, benchmark)
 
-## 3. Inicializar y correr el motor
+# 3. Inicializar y correr el motor
 bt = MinerviniBacktest(
     data=data_processed,
     benchmark_df=benchmark,
     earnings_calendar=earnings_cal,
     initial_capital=100000.0,
     max_positions=5,
-    stop_loss_pct=0.055,          # Stop Loss inicial al 5.5%
+    stop_loss_pct=0.065,          # Stop Loss óptimo al 6.5%
     exit_sma_period=25,           # Salida en cruce de SMA 25
     vol_mult=2.0,                 # Exigencia de 200% de volumen en rotura
     sma_buffer_days=1,            # Salida en Open t+1 tras confirmar pérdida
     cash_yield_annual="dynamic",  # Tipos de la Fed sobre liquidez
+    max_chase_pct=0.03,           # Filtro anti-chasing (máx. 3% en Open)
     earnings_entry_buffer=14,     # No comprar 14 días antes de resultados
     earnings_exit_buffer=2,       # Evaluar salida 2 días antes de resultados
     earnings_cushion_pct=0.06     # Exigir +6% de beneficio para mantener en earnings
@@ -92,11 +99,10 @@ bt = MinerviniBacktest(
 
 equity_df, trades_df = bt.run()
 
-## 4. Métricas de rendimiento
+# 4. Métricas de rendimiento
 metricas = calculate_metrics(equity_df, trades_df, benchmark)
 for k, v in metricas.items():
     print(f"{k}: {v}")
-
 
 # Licencia
 
