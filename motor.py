@@ -563,7 +563,7 @@ class MinerviniBacktest:
                             
                         is_breakout = close_price > resistance_40
                         vol_institutional = float(row['Volume']) >= self.vol_mult * vol_avg_50
-                        near_52w_high = close_price >= (high_52w * 0.85)
+                        near_52w_high = close_price >= (high_52w * 0.75)
                         
                         if is_breakout and vol_institutional and near_52w_high:
                             candidates.append((ticker, rs_ratio))
