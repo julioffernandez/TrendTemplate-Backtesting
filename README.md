@@ -43,7 +43,7 @@ El sistema incorpora gestión de riesgo asimétrica, protección ante anuncios d
 
 2. Instalar dependencias:
 ```
-python -m pip install pandas numpy yfinance matplotlib
+python -m pip install pandas numpy yfinance matplotlib lxml
 ´´´
 Mediante VS Code tener las extensiones de Jupyter y Python instaladas
 
